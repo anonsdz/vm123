@@ -1,25 +1,21 @@
-# Sử dụng image cơ bản
 FROM ubuntu:22.04
 
-# Cài đặt các công cụ cần thiết
+# Cập nhật và cài đặt các gói cần thiết
 RUN apt-get update && apt-get install -y \
     openssh-server \
-    sudo \
-    && mkdir /var/run/sshd
+    sudo && \
+    mkdir /var/run/sshd
 
-# Thêm người dùng mới để sử dụng SSH
+# Tạo người dùng và đặt mật khẩu
 RUN useradd -m -s /bin/bash admin && echo "admin:admin" | chpasswd && adduser admin sudo
 
-# Cấu hình SSH để cho phép đăng nhập bằng mật khẩu
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+# Cấu hình SSH để chạy ở chế độ nền
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's@session    required     pam_loginuid.so@session    optional     pam_loginuid.so@g' /etc/pam.d/sshd && \
+    echo "export VISIBLE=now" >> /etc/profile
 
-# Cấp quyền cho script entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Expose cổng 22 để SSH
+# Mở cổng SSH
 EXPOSE 22
 
-# Khởi động SSH server khi container chạy
-CMD ["/entrypoint.sh"]
+# Lệnh khởi động
+CMD ["/usr/sbin/sshd", "-D"]
